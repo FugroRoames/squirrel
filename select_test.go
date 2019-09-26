@@ -179,6 +179,22 @@ func TestSelectBuilderNestedSelectJoin(t *testing.T) {
 	assert.Equal(t, args, expectedArgs)
 }
 
+func TestSelectBuilderNestedSelectJoinWithArgs(t *testing.T) {
+
+	expectedSql := "SELECT * FROM bar JOIN ( SELECT * FROM baz WHERE foo IN ($1,$2) ) r ON bar.foo = r.foo WHERE bar.a = $3"
+	expectedArgs := []interface{}{41, 42, 43}
+
+	nestedSelect := StatementBuilder.PlaceholderFormat(Dollar).Select("*").From("baz").Where(Eq{"foo": []int{41, 42}})
+
+	b := StatementBuilder.PlaceholderFormat(Dollar).Select("*").From("bar").JoinClause(nestedSelect.Prefix("JOIN (").Suffix(") r ON bar.foo = r.foo")).Where(Eq{"bar.a": 43})
+
+	sql, args, err := b.ToSql()
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSql, sql)
+	assert.Equal(t, args, expectedArgs)
+}
+
 func TestSelectWithOptions(t *testing.T) {
 	sql, _, err := Select("*").From("foo").Distinct().Options("SQL_NO_CACHE").ToSql()
 
