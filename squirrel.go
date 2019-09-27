@@ -19,6 +19,7 @@ import (
 // as passed to e.g. database/sql.Exec. It can also return an error.
 type Sqlizer interface {
 	ToSql() (string, []interface{}, error)
+	ToSqlWithArgsOffset(argsOffset int) (string, []interface{}, error)
 }
 
 // rawSqlizer is expected to do what Sqlizer does, but without finalizing placeholders.
