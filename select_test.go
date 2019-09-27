@@ -255,3 +255,32 @@ func TestSelectWithEmptyStringWhereClause(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
+
+func TestSelectSimpleUnion(t *testing.T) {
+	sql, _, err := Union(Select("*").From("foo"), Select("*").From("foo")).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM foo UNION SELECT * FROM foo", sql)
+}
+
+func TestSelectUnionWithArgs(t *testing.T) {
+	n := 5
+	sql, args, err := Union(Select("*").From("foo").Where(Eq{"g": n}), Select("*").From("foo").Where(Eq{"f": n})).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM foo WHERE g = ? UNION SELECT * FROM foo WHERE f = ?", sql)
+
+	expectedArgs := []interface{}{5, 5}
+	assert.Equal(t, expectedArgs, args)
+}
+
+func TestSelectUnionWithArgsDollarPlaceholders(t *testing.T) {
+	n := 5
+	sql, args, err := Union(
+		Select("*").From("foo").Where(Eq{"g": n}).PlaceholderFormat(Dollar),
+		Select("*").From("foo").Where(Eq{"f": n}).PlaceholderFormat(Dollar),
+	).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM foo WHERE g = $1 UNION SELECT * FROM foo WHERE f = $2", sql)
+
+	expectedArgs := []interface{}{5, 5}
+	assert.Equal(t, expectedArgs, args)
+}

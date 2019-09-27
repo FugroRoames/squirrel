@@ -52,20 +52,28 @@ func (d *selectData) QueryRow() RowScanner {
 }
 
 func (d *selectData) ToSql() (sqlStr string, args []interface{}, err error) {
-	sqlStr, args, err = d.toSql()
+	sqlStr, args, err = d.toSql(ZeroOffset)
 	if err != nil {
 		return
 	}
 
-	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(sqlStr)
+	return
+}
+
+func (d *selectData) ToSqlWithArgsOffset(argsOffset int) (sqlStr string, args []interface{}, err error) {
+	sqlStr, args, err = d.toSql(argsOffset)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
 func (d *selectData) toSqlRaw() (sqlStr string, args []interface{}, err error) {
-	return d.toSql()
+	return d.toSql(ZeroOffset)
 }
 
-func (d *selectData) toSql() (sqlStr string, args []interface{}, err error) {
+func (d *selectData) toSql(argsOffset int) (sqlStr string, args []interface{}, err error) {
 	if len(d.Columns) == 0 {
 		err = fmt.Errorf("select statements must have at least one result column")
 		return
@@ -152,7 +160,11 @@ func (d *selectData) toSql() (sqlStr string, args []interface{}, err error) {
 		args, _ = d.Suffixes.AppendToSql(sql, " ", args)
 	}
 
-	sqlStr = sql.String()
+	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholdersWithOffset(sql.String(), argsOffset)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
@@ -207,8 +219,13 @@ func (b SelectBuilder) Scan(dest ...interface{}) error {
 
 // ToSql builds the query into a SQL string and bound args.
 func (b SelectBuilder) ToSql() (string, []interface{}, error) {
+	return b.ToSqlWithArgsOffset(ZeroOffset)
+}
+
+// ToSqlWithArgsOffset builds the query into a SQL string and bound args, with a given args offset (used for union of queries).
+func (b SelectBuilder) ToSqlWithArgsOffset(argsOffset int) (string, []interface{}, error) {
 	data := builder.GetStruct(b).(selectData)
-	return data.ToSql()
+	return data.ToSqlWithArgsOffset(argsOffset)
 }
 
 func (b SelectBuilder) MustSql() (string, []interface{}) {

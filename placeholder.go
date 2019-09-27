@@ -6,12 +6,15 @@ import (
 	"strings"
 )
 
+const ZeroOffset = 0
+
 // PlaceholderFormat is the interface that wraps the ReplacePlaceholders method.
 //
 // ReplacePlaceholders takes a SQL statement and replaces each question mark
 // placeholder with a (possibly different) SQL placeholder.
 type PlaceholderFormat interface {
 	ReplacePlaceholders(sql string) (string, error)
+	ReplacePlaceholdersWithOffset(sql string, offset int) (string, error)
 }
 
 var (
@@ -34,16 +37,28 @@ func (questionFormat) ReplacePlaceholders(sql string) (string, error) {
 	return sql, nil
 }
 
+func (questionFormat) ReplacePlaceholdersWithOffset(sql string, offset int) (string, error) {
+	return sql, nil
+}
+
 type dollarFormat struct{}
 
 func (dollarFormat) ReplacePlaceholders(sql string) (string, error) {
-	return replacePositionalPlaceholders(sql, "$")
+	return replacePositionalPlaceholders(sql, "$", ZeroOffset)
+}
+
+func (dollarFormat) ReplacePlaceholdersWithOffset(sql string, offset int) (string, error) {
+	return replacePositionalPlaceholders(sql, "$", offset)
 }
 
 type colonFormat struct{}
 
 func (colonFormat) ReplacePlaceholders(sql string) (string, error) {
-	return replacePositionalPlaceholders(sql, ":")
+	return replacePositionalPlaceholders(sql, ":", ZeroOffset)
+}
+
+func (colonFormat) ReplacePlaceholdersWithOffset(sql string, offset int) (string, error) {
+	return replacePositionalPlaceholders(sql, ":", offset)
 }
 
 // Placeholders returns a string with count ? placeholders joined with commas.
@@ -55,9 +70,9 @@ func Placeholders(count int) string {
 	return strings.Repeat(",?", count)[1:]
 }
 
-func replacePositionalPlaceholders(sql, prefix string) (string, error) {
+func replacePositionalPlaceholders(sql, prefix string, offset int) (string, error) {
 	buf := &bytes.Buffer{}
-	i := 0
+	i := offset
 	for {
 		p := strings.Index(sql, "?")
 		if p == -1 {
